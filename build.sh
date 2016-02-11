@@ -4,6 +4,7 @@
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
+IMAGE_FILE=efaLive-2.3.img
 
 #
 # Environment
@@ -23,7 +24,7 @@ bootstrap_base_system() {
 
 install_base_system() {
     echo "Install base system ..."
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR debootstrap/debootstrap --second-stage
+    chroot $CHROOT_DIR debootstrap/debootstrap --second-stage
 }
 
 install_firmware_and_kernel() {
@@ -33,7 +34,6 @@ install_firmware_and_kernel() {
         wget -q --show-progress -O firmware.zip https://github.com/raspberrypi/firmware/archive/master.zip
     fi
     unzip -q firmware.zip
-    #git clone http s://github.com/raspberrypi/firmware.git
     cp -R firmware-master/hardfp/opt/* $CHROOT_DIR/opt/
     mkdir $CHROOT_DIR/lib/modules/
     cp -R firmware-master/modules/* $CHROOT_DIR/lib/modules/
@@ -41,28 +41,27 @@ install_firmware_and_kernel() {
 
 install_additional_software() {
     echo "Install additional software ..."
+
     cp files/sources.list $CHROOT_DIR/etc/apt/sources.list
     cp files/efalive.list $CHROOT_DIR/etc/apt/sources.list.d/
     mkdir -p $CHROOT_DIR/tmp/keys
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR wget http://archive.raspbian.org/raspbian.public.key -q --show-progress -O /tmp/keys/raspbian.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -q --show-progress -O /tmp/keys/raspberrypi.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR wget http://efalive.hannay.de/efalive.key -q --show-progress -O /tmp/keys/efalive.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt-key add /tmp/keys/efalive.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt-key add /tmp/keys/raspberrypi.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt-key add /tmp/keys/raspbian.key
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt-key list
-    #$CHROOT_ENVIRONMENT chroot $CHROOT_DIR wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -O - | apt-key add -
-    #$CHROOT_ENVIRONMENT chroot $CHROOT_DIR wget http://efalive.hannay.de/efalive.key -O - | apt-key add -
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt update
+    chroot $CHROOT_DIR wget http://archive.raspbian.org/raspbian.public.key -q --show-progress -O /tmp/keys/raspbian.key
+    chroot $CHROOT_DIR wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -q --show-progress -O /tmp/keys/raspberrypi.key
+    chroot $CHROOT_DIR wget http://efalive.hannay.de/efalive.key -q --show-progress -O /tmp/keys/efalive.key
+    chroot $CHROOT_DIR apt-key add /tmp/keys/efalive.key
+    chroot $CHROOT_DIR apt-key add /tmp/keys/raspberrypi.key
+    chroot $CHROOT_DIR apt-key add /tmp/keys/raspbian.key
+    chroot $CHROOT_DIR apt-key list
+    chroot $CHROOT_DIR apt update
 
     mount -t proc proc ./$CHROOT_DIR/proc
     mount -t sysfs sysfs ./$CHROOT_DIR/sys
     mount -o bind /dev ./$CHROOT_DIR/dev
 
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR mount
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm
+    chroot $CHROOT_DIR mount
+    chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm
 
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR apt-get clean
+    chroot $CHROOT_DIR apt-get clean
 
     for i in $(ps ax | grep qemu-arm-static | grep -v grep | sed -e 's/\([0-9]*\).*/\1/g')
     do
@@ -70,8 +69,6 @@ install_additional_software() {
     done
 
     sleep 5
-
-    ps ax
 
     umount --force ./$CHROOT_DIR/proc
     umount --force ./$CHROOT_DIR/sys
@@ -83,14 +80,14 @@ configure_system() {
     cp files/fstab $CHROOT_DIR/etc/fstab
     cp files/hostname $CHROOT_DIR/etc/hostname
     cp files/interfaces/* $CHROOT_DIR/etc/network/interfaces.d/
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR useradd -G sudo,staff,kmem,plugdev -s /bin/bash -d /home/pi -m pi
-    echo "pi:raspberry" | $CHROOT_ENVIRONMENT chroot $CHROOT_DIR chpasswd
-    echo "root:livecd" | $CHROOT_ENVIRONMENT chroot $CHROOT_DIR chpasswd
+    chroot $CHROOT_DIR useradd -G sudo,staff,kmem,plugdev -s /bin/bash -d /home/pi -m pi
+    echo "pi:raspberry" | chroot $CHROOT_DIR chpasswd
+    echo "root:livecd" | chroot $CHROOT_DIR chpasswd
     sed -i 's/^#autologin-user=/autologin-user=efa/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     sed -i 's/^#autologin-user-timeout=0/autologin-user-timeout=0/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     sed -i 's/^#user-session=default/user-session=efalive-session/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     cp files/efalive-session.desktop $CHROOT_DIR/usr/share/xsessions/
-    $CHROOT_ENVIRONMENT chroot $CHROOT_DIR ln -s /home/efa/.xinitrc /home/efa/.xsessionrc
+    chroot $CHROOT_DIR ln -s /home/efa/.xinitrc /home/efa/.xsessionrc
 }
 
 cleanup_system() {
@@ -102,11 +99,10 @@ cleanup_system() {
 
 prepare_image_file() {
     echo "Create image file ..."
-    IMAGE=efaLivePi_2.3.img
-    dd if=/dev/zero of=$IMAGE bs=1M count=1500
+    dd if=/dev/zero of=$IMAGE_FILE bs=1M count=1500
 
     echo "Partition image file ..."
-parted $IMAGE <<EOF
+parted $IMAGE_FILE <<EOF
 unit b
 mklabel msdos
 mkpart primary fat32 $(expr 4 \* 1024 \* 1024) $(expr 60 \* 1024 \* 1024 - 1)
@@ -117,7 +113,7 @@ EOF
 }
 
 create_loop_device() {
-    LOOPDEV=`losetup -P -f --show $IMAGE`
+    LOOPDEV=`losetup -P -f --show $IMAGE_FILE`
     echo "Loop device created: $LOOPDEV"
 }
 
@@ -143,7 +139,7 @@ copy_data_to_bootfs() {
     mount ${LOOPDEV}p1 bootfs
     cp -R firmware-master/boot/* bootfs/
 
-    sh -c 'cat >bootfs/config.txt<<EOF
+sh -c 'cat >bootfs/config.txt<<EOF
 kernel=kernel.img
 arm_freq=800
 core_freq=250
@@ -166,44 +162,64 @@ remove_loop_device() {
     losetup -d $LOOPDEV
 }
 
-case $1 in
-    *)
-        ;&
-    '0')
+STEP=0
+if [ "x$1" != "x" ]
+then
+    STEP=$1
+fi
+
+case $STEP in
+    0)
+        echo -e "\n[BUILD] Running step '0'"
         bootstrap_base_system
         ;&
-    '1')
+    1)
+        echo -e "\n[BUILD] Running step '1'"
         install_base_system
         ;&
-    '2')
+    2)
+        echo -e "\n[BUILD] Running step '2'"
         install_firmware_and_kernel
         ;&
-    '3')
+    3)
+        echo -e "\n[BUILD] Running step '3'"
         install_additional_software
         ;&
-    '4')
+    4)
+        echo -e "\n[BUILD] Running step '4'"
         configure_system
         ;&
-    '5')
+    5)
+        echo -e "\n[BUILD] Running step '5'"
         cleanup_system
         ;&
-    '6')
+    6)
+        echo -e "\n[BUILD] Running step '6'"
         prepare_image_file
         ;&
-    '7')
+    7)
+        echo -e "\n[BUILD] Running step '7'"
         create_loop_device
         ;&
-    '8')
+    8)
+        echo -e "\n[BUILD] Running step '8'"
         format_image_partitions
         ;&
-    '9')
+    9)
+        echo -e "\n[BUILD] Running step '9'"
         copy_data_to_rootfs
         ;&
-    '10')
+    10)
+        echo -e "\n[BUILD] Running step '10'"
         copy_data_to_bootfs
         ;&
-    '11')
+    11)
+        echo -e "\n[BUILD] Running step '11'"
         remove_loop_device
+        ;;
+    *)
+        echo -e "\n\nUnknown step '$STEP' provided. Valid steps are 0 - 11.\n"
+        exit 1
         ;;
 esac
 
