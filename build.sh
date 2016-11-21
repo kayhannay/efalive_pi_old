@@ -1,10 +1,12 @@
+#!/bin/bash
 # apt install qemu-user-static debootstrap git kpartx
 
 #
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
-IMAGE_FILE=efaLive-2.3.img
+IMAGE_FILE=efaLivePi-2.5.img
+LOGFILE=build.log
 
 #
 # Environment
@@ -15,6 +17,13 @@ export LC_ALL=C
 export LANGUAGE=C
 export LANG=C
 
+exec &> >(tee -a "$LOGFILE")
+
+clean() {
+    echo "Clean up project (but leave firmware download as is)..."
+    rm -r $CHROOT_DIR
+    rm -r firmware-master
+}
 
 bootstrap_base_system() {
     echo "Bootstrapping base system ..."
@@ -37,6 +46,14 @@ install_firmware_and_kernel() {
     cp -R firmware-master/hardfp/opt/* $CHROOT_DIR/opt/
     mkdir $CHROOT_DIR/lib/modules/
     cp -R firmware-master/modules/* $CHROOT_DIR/lib/modules/
+    if [ ! -f brcmfmac43430-sdio.bin ]
+    then
+        wget -q --show-progress https://github.com/RPi-Distro/firmware-nonfree/raw/master/brcm80211/brcm/brcmfmac43430-sdio.bin
+        wget -q --show-progress https://github.com/RPi-Distro/firmware-nonfree/raw/master/brcm80211/brcm/brcmfmac43430-sdio.txt
+    fi
+    mkdir -p $CHROOT_DIR/lib/firmware/brcm
+    cp brcmfmac43430-sdio.bin $CHROOT_DIR/lib/firmware/brcm/brcmfmac43430-sdio.bin
+    cp brcmfmac43430-sdio.txt $CHROOT_DIR/lib/firmware/brcm/brcmfmac43430-sdio.txt
 }
 
 install_additional_software() {
@@ -59,11 +76,11 @@ install_additional_software() {
     mount -o bind /dev ./$CHROOT_DIR/dev
 
     chroot $CHROOT_DIR mount
-    chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm
+    chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm raspi-config locales oracle-java8-jdk
 
     chroot $CHROOT_DIR apt-get clean
 
-    for i in $(ps ax | grep qemu-arm-static | grep -v grep | sed -e 's/\([0-9]*\).*/\1/g')
+    for i in $(ps ax | grep qemu-arm-static | grep -v grep | sed -e 's/\([ 0-9]*\).*/\1/g')
     do
         kill $i
     done
@@ -88,10 +105,12 @@ configure_system() {
     sed -i 's/^#user-session=default/user-session=efalive-session/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     cp files/efalive-session.desktop $CHROOT_DIR/usr/share/xsessions/
     chroot $CHROOT_DIR ln -s /home/efa/.xinitrc /home/efa/.xsessionrc
+    cp files/raspbian_libs.conf $CHROOT_DIR/etc/ld.so.conf.d/
+    chroot $CHROOT_DIR ldconfig
 }
 
 cleanup_system() {
-    echo "Cleanup ..."
+    echo "Cleanup chroot ..."
     rm -r $CHROOT_DIR/tmp/keys
     rm $CHROOT_DIR/usr/bin/qemu-arm-static
 }
@@ -99,7 +118,7 @@ cleanup_system() {
 
 prepare_image_file() {
     echo "Create image file ..."
-    dd if=/dev/zero of=$IMAGE_FILE bs=1M count=1500
+    dd if=/dev/zero of=$IMAGE_FILE bs=1M count=1700
 
     echo "Partition image file ..."
 parted $IMAGE_FILE <<EOF
@@ -140,12 +159,25 @@ copy_data_to_bootfs() {
     cp -R firmware-master/boot/* bootfs/
 
 sh -c 'cat >bootfs/config.txt<<EOF
-kernel=kernel.img
-arm_freq=800
-core_freq=250
-sdram_freq=400
-over_voltage=0
-gpu_mem=16
+#kernel=kernel.img
+
+# Frequencies
+#arm_freq=800
+#core_freq=250
+#sdram_freq=400
+#over_voltage=0
+
+# Display
+#gpu_mem=16
+hdmi_blanking=1
+#hdmi_mode=1
+disable_overscan=1
+#overscan_left=16
+#overscan_right=16
+#overscan_top=16
+#overscan_bottom=16
+
+# for more options see http://elinux.org/RPi_config.txt
 EOF
 '
 
@@ -171,6 +203,7 @@ fi
 case $STEP in
     0)
         echo -e "\n[BUILD] Running step '0'"
+        clean
         bootstrap_base_system
         ;&
     1)
