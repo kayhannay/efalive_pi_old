@@ -97,8 +97,6 @@ configure_system() {
     cp files/fstab $CHROOT_DIR/etc/fstab
     cp files/hostname $CHROOT_DIR/etc/hostname
     cp files/interfaces/* $CHROOT_DIR/etc/network/interfaces.d/
-    chroot $CHROOT_DIR useradd -G sudo,staff,kmem,plugdev -s /bin/bash -d /home/pi -m pi
-    echo "pi:raspberry" | chroot $CHROOT_DIR chpasswd
     echo "root:livecd" | chroot $CHROOT_DIR chpasswd
     sed -i 's/^#autologin-user=/autologin-user=efa/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     sed -i 's/^#autologin-user-timeout=0/autologin-user-timeout=0/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
