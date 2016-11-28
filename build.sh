@@ -5,7 +5,7 @@
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
-IMAGE_FILE=efaLivePi-2.5.img
+IMAGE_FILE=efaLive-2.5-pi.img
 LOGFILE=build.log
 
 #
