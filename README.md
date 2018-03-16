@@ -1,11 +1,12 @@
-#efaLive PI project
+# efaLive PI project
 
 This project contains a build script to create a SD card image with efaLive for the RaspberryPi.
 
-##Binaries and documentation
+## Binaries and documentation
+
 For more information about efaLive, have a look to the efaLive documentation on [my homepage](http://www.hannay.de/index.php/efalive).
 
-##Related projects
+## Related projects
 * [Debian GNU/Linux project](http://www.debian.-org/)
 * [efaLive Docker](https://github.com/efalive/efalive_docker) - the Docker file to create an efaLive development environment
 * [efaLive CD](https://github.com/efalive/efalive_cd) - the live CD build configuration
@@ -14,10 +15,10 @@ For more information about efaLive, have a look to the efaLive documentation on 
 * [efa 2](https://github.com/efalive/efa2) - the Debian package configuration of the efa software
 * [efa](http://efa.nmichael.de/) - the rowing and canoeing log book software
 
-##Requirements
+## Requirements
 You need a Debian system. It might work on other Debian based systems as well, but it is not tested. You need the packages qemu-user-static, parted and debootstrap for sure, other tools are more or less standard on a Debian system.
 
-##How to build
+## How to build
 You can create a RaspberryPi image by calling
 
 ```shell
