@@ -5,7 +5,7 @@
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
-IMAGE_FILE=efaLive-2.5-pi.img
+IMAGE_FILE=efaLive-2.6-pi.img
 LOGFILE=build.log
 
 #
@@ -27,7 +27,7 @@ clean() {
 
 bootstrap_base_system() {
     echo "Bootstrapping base system ..."
-    debootstrap --no-check-gpg --foreign --arch armhf jessie $CHROOT_DIR https://archive.raspbian.org/raspbian
+    debootstrap --no-check-gpg --foreign --arch armhf stretch $CHROOT_DIR https://archive.raspbian.org/raspbian
     cp /usr/bin/qemu-arm-static $CHROOT_DIR/usr/bin/
 }
 
@@ -97,6 +97,7 @@ configure_system() {
     cp files/fstab $CHROOT_DIR/etc/fstab
     cp files/hostname $CHROOT_DIR/etc/hostname
     cp files/interfaces/* $CHROOT_DIR/etc/network/interfaces.d/
+    cp -r files/usr $CHROOT_DIR/
     echo "root:livecd" | chroot $CHROOT_DIR chpasswd
     sed -i 's/^#autologin-user=/autologin-user=efa/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
     sed -i 's/^#autologin-user-timeout=0/autologin-user-timeout=0/g' $CHROOT_DIR/etc/lightdm/lightdm.conf
