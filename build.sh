@@ -5,8 +5,9 @@
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
-IMAGE_FILE=efaLive-2.6-pi.img
+IMAGE_FILE=efaLive-2.7-pi.img
 LOGFILE=build.log
+DISTRIBUTION=buster
 
 #
 # Environment
@@ -27,7 +28,7 @@ clean() {
 
 bootstrap_base_system() {
     echo "Bootstrapping base system ..."
-    debootstrap --no-check-gpg --foreign --arch armhf stretch $CHROOT_DIR https://archive.raspbian.org/raspbian
+    debootstrap --no-check-gpg --foreign --arch armhf $DISTRIBUTION $CHROOT_DIR https://archive.raspbian.org/raspbian
     cp /usr/bin/qemu-arm-static $CHROOT_DIR/usr/bin/
 }
 
@@ -36,35 +37,15 @@ install_base_system() {
     chroot $CHROOT_DIR debootstrap/debootstrap --second-stage
 }
 
-install_firmware_and_kernel() {
-    echo "Install firmware and Kernel ..."
-    if [ ! -f firmware.zip ]
-    then
-        wget -q --show-progress -O firmware.zip https://github.com/raspberrypi/firmware/archive/master.zip
-    fi
-    unzip -q firmware.zip
-    cp -R firmware-master/hardfp/opt/* $CHROOT_DIR/opt/
-    mkdir $CHROOT_DIR/lib/modules/
-    cp -R firmware-master/modules/* $CHROOT_DIR/lib/modules/
-    if [ ! -f brcmfmac43430-sdio.bin ]
-    then
-        wget -q --show-progress https://github.com/RPi-Distro/firmware-nonfree/raw/master/brcm80211/brcm/brcmfmac43430-sdio.bin
-        wget -q --show-progress https://github.com/RPi-Distro/firmware-nonfree/raw/master/brcm80211/brcm/brcmfmac43430-sdio.txt
-    fi
-    mkdir -p $CHROOT_DIR/lib/firmware/brcm
-    cp brcmfmac43430-sdio.bin $CHROOT_DIR/lib/firmware/brcm/brcmfmac43430-sdio.bin
-    cp brcmfmac43430-sdio.txt $CHROOT_DIR/lib/firmware/brcm/brcmfmac43430-sdio.txt
-}
-
-install_additional_software() {
-    echo "Install additional software ..."
+install_software() {
+    echo "Install software ..."
 
     cp files/sources.list $CHROOT_DIR/etc/apt/sources.list
     cp files/efalive.list $CHROOT_DIR/etc/apt/sources.list.d/
     mkdir -p $CHROOT_DIR/tmp/keys
-    chroot $CHROOT_DIR wget http://archive.raspbian.org/raspbian.public.key -q --show-progress -O /tmp/keys/raspbian.key
-    chroot $CHROOT_DIR wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -q --show-progress -O /tmp/keys/raspberrypi.key
-    chroot $CHROOT_DIR wget http://efalive.hannay.de/efalive.key -q --show-progress -O /tmp/keys/efalive.key
+    wget http://archive.raspbian.org/raspbian.public.key -q --show-progress -O $CHROOT_DIR/tmp/keys/raspbian.key
+    wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -q --show-progress -O $CHROOT_DIR/tmp/keys/raspberrypi.key
+    wget http://efalive.hannay.de/efalive.key -q --show-progress -O $CHROOT_DIR/tmp/keys/efalive.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/efalive.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/raspberrypi.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/raspbian.key
@@ -76,7 +57,9 @@ install_additional_software() {
     mount -o bind /dev ./$CHROOT_DIR/dev
 
     chroot $CHROOT_DIR mount
-    chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm raspi-config locales oracle-java8-jdk
+    chroot $CHROOT_DIR apt install -y --force-yes raspberrypi-bootloader raspberrypi-kernel firmware-brcm80211
+    chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm raspi-config locales wget
+    #oracle-java8-jdk
 
     chroot $CHROOT_DIR apt-get clean
 
@@ -117,7 +100,7 @@ cleanup_system() {
 
 prepare_image_file() {
     echo "Create image file ..."
-    dd if=/dev/zero of=$IMAGE_FILE bs=1M count=1700
+    dd if=/dev/zero of=$IMAGE_FILE bs=1M count=2000
 
     echo "Partition image file ..."
 parted $IMAGE_FILE <<EOF
@@ -146,7 +129,7 @@ copy_data_to_rootfs() {
     mkdir rootfs
     mount ${LOOPDEV}p2 rootfs
     cp -a $CHROOT_DIR/* rootfs
-    cp -a firmware-master/hardfp/opt/vc rootfs/opt/
+    rm -r rootfs/boot
     umount rootfs
     rm -r rootfs
 }
@@ -155,7 +138,7 @@ copy_data_to_bootfs() {
     echo "Copy boot file system into image ..."
     mkdir bootfs
     mount ${LOOPDEV}p1 bootfs
-    cp -R firmware-master/boot/* bootfs/
+    cp -R ${CHROOT_DIR}/boot/* bootfs/
 
 sh -c 'cat >bootfs/config.txt<<EOF
 #kernel=kernel.img
@@ -210,42 +193,38 @@ case $STEP in
         install_base_system
         ;&
     2)
-        echo -e "\n[BUILD] Running step '2'"
-        install_firmware_and_kernel
+        echo -e "\n[BUILD] Running step '3'"
+        install_software
         ;&
     3)
-        echo -e "\n[BUILD] Running step '3'"
-        install_additional_software
-        ;&
-    4)
         echo -e "\n[BUILD] Running step '4'"
         configure_system
         ;&
-    5)
+    4)
         echo -e "\n[BUILD] Running step '5'"
         cleanup_system
         ;&
-    6)
+    5)
         echo -e "\n[BUILD] Running step '6'"
         prepare_image_file
         ;&
-    7)
+    6)
         echo -e "\n[BUILD] Running step '7'"
         create_loop_device
         ;&
-    8)
+    7)
         echo -e "\n[BUILD] Running step '8'"
         format_image_partitions
         ;&
-    9)
+    8)
         echo -e "\n[BUILD] Running step '9'"
         copy_data_to_rootfs
         ;&
-    10)
+    9)
         echo -e "\n[BUILD] Running step '10'"
         copy_data_to_bootfs
         ;&
-    11)
+    10)
         echo -e "\n[BUILD] Running step '11'"
         remove_loop_device
         ;;
