@@ -21,9 +21,8 @@ export LANG=C
 exec &> >(tee -a "$LOGFILE")
 
 clean() {
-    echo "Clean up project (but leave firmware download as is)..."
+    echo "Clean up project ..."
     rm -r $CHROOT_DIR
-    rm -r firmware-master
 }
 
 bootstrap_base_system() {
@@ -57,9 +56,8 @@ install_software() {
     mount -o bind /dev ./$CHROOT_DIR/dev
 
     chroot $CHROOT_DIR mount
-    chroot $CHROOT_DIR apt install -y --force-yes raspberrypi-bootloader raspberrypi-kernel firmware-brcm80211
+    chroot $CHROOT_DIR apt install -y --force-yes raspberrypi-bootloader raspberrypi-kernel firmware-brcm80211 raspi-copies-and-fills
     chroot $CHROOT_DIR apt install -y --force-yes efalive lightdm raspi-config locales wget
-    #oracle-java8-jdk
 
     chroot $CHROOT_DIR apt-get clean
 
@@ -89,6 +87,8 @@ configure_system() {
     chroot $CHROOT_DIR ln -s /home/efa/.xinitrc /home/efa/.xsessionrc
     cp files/raspbian_libs.conf $CHROOT_DIR/etc/ld.so.conf.d/
     chroot $CHROOT_DIR ldconfig
+    cp files/hwclock.service $CHROOT_DIR/etc/systemd/system/
+    chroot $CHROOT_DIR /usr/sbin/plymouth-set-default-theme efa-live
 }
 
 cleanup_system() {
@@ -159,12 +159,19 @@ disable_overscan=1
 #overscan_top=16
 #overscan_bottom=16
 
+# RTC settings
+#dtoverlay=i2c-rtc,ds1307
+#dtoverlay=i2c-rtc,ds3231
+
+# Power on/off button (GPIO3 - GND)
+#dtoverlay=gpio-shutdown,gpio_pin=3,active_low=1,gpio_pull=up
+
 # for more options see http://elinux.org/RPi_config.txt
 EOF
 '
 
 sh -c 'cat >bootfs/cmdline.txt<<EOF
-dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait rw
+dwc_otg.lpm_enable=0 root=/dev/mmcblk0p2 rootfstype=ext4 rootwait rw splash logo.nologo loglevel=1 quiet vt.global_cursor_default=0 plymouth.ignore-serial-consoles
 EOF
 '
 
