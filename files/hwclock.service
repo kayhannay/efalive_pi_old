@@ -1,0 +1,15 @@
+[Unit]
+Description=Handle RTC
+
+[Service]
+ExecStart=/sbin/hwclock -s
+ExecStop=/sbin/hwclock -w
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=hwclock
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
