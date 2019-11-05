@@ -1,0 +1,9 @@
+*.log
+*.img
+*.zip
+kernel-qemu
+kernel-qemu-4.19.50-buster
+qemu-rpi-kernel
+raspbian-chroot/
+run_qemu.sh
+versatile-pb.dtb
