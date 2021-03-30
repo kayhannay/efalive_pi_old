@@ -5,7 +5,7 @@
 # Configuration settings
 #
 CHROOT_DIR=raspbian-chroot
-IMAGE_FILE=efaLive-2.7-pi.img
+IMAGE_FILE=efaLive-2.8-pi.img
 LOGFILE=build.log
 DISTRIBUTION=buster
 
@@ -44,7 +44,7 @@ install_software() {
     mkdir -p $CHROOT_DIR/tmp/keys
     wget http://archive.raspbian.org/raspbian.public.key -q --show-progress -O $CHROOT_DIR/tmp/keys/raspbian.key
     wget http://archive.raspberrypi.org/debian/raspberrypi.gpg.key -q --show-progress -O $CHROOT_DIR/tmp/keys/raspberrypi.key
-    wget http://efalive.hannay.de/efalive.key -q --show-progress -O $CHROOT_DIR/tmp/keys/efalive.key
+    wget https://efalive.hannay.de/efalive.key -q --show-progress -O $CHROOT_DIR/tmp/keys/efalive.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/efalive.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/raspberrypi.key
     chroot $CHROOT_DIR apt-key add /tmp/keys/raspbian.key
